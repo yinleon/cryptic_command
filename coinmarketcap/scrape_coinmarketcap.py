@@ -8,7 +8,7 @@ import pandas as pd
 from bs4 import BeautifulSoup
 
 
-root_dir = '.'
+root_dir = '../'
 table_url = 'https://coinmarketcap.com/all/views/all/'
 table_id = 'currencies-all'
 today = datetime.datetime.now()
@@ -75,26 +75,32 @@ def is_minable(row):
     circulating_supply = row['circulating_supply']
     if '*' in circulating_supply:
         return 0
-    
     else:
         return 1
 
     
 def main():
     file = create_filename(root_dir, today)
+    
     if not os.path.exists(file):
+        # get html of table.
         r = requests.get(table_url)
         soup = BeautifulSoup(r.content, 'lxml')
         html_tbl = str(soup.find('table',{'id': table_id}))
-        df = pd.read_html(html_tbl, index_col=0)[0]
         
+        # read pandas dataframe, and update columns.
+        df = pd.read_html(html_tbl, index_col=0)[0]
         df.columns = [clean_up_col(c) for c in df.columns]
+        
+        # create two new columns
         df['scrape_timestamp'] = today
         df['is_minable'] = df.apply(is_minable, axis=1)
         
+        # remove non-numeri symbols
         df.replace(replace_symbols, regex=True, inplace=True)
         
-        df.to_csv(file, index=None)
+        # write to csv w/ gzip
+        df.to_csv(file, index=None, compression='gzip')
 
         
 if __name__ == "__main__":
